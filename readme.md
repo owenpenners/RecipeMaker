@@ -1,4 +1,4 @@
 # RecipeMaker
 - Owen Penners - github: owenpenners
 - David Zhang - github: jhzhgg
-- Indpaul Johl - github: 
+- Indpaul Johl - github: johlsunny@gmail.com
