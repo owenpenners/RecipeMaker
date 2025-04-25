@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Edit Recipe</title></head>
+<body>
+    <h1>Edit Recipe: {{ recipe.title }}</h1>
+    <form method="post">
+        Ingredients: <textarea name="ingredients">{{ recipe.ingredients }}</textarea><br>
+        Instructions: <textarea name="instructions">{{ recipe.instructions }}</textarea><br>
+        <button type="submit">Update</button>
+    </form>
+</body>
+</html>
