@@ -1,0 +1,15 @@
+# virtual environment
+venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# local SQLite DB
+*.db
+*.sqlite3
+
+# editor / OS files
+.vscode/
+*.env
+.DS_Store
