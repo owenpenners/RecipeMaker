@@ -37,7 +37,7 @@ Users can filter recipes by predefined tags such as 'vegan', 'dessert', or 'glut
 ---------------------------------------------------------------------------------------------------------------
 1. Pages load within 1 second
 2. The password database is secured by any type of encryption
-3. xxx
+3. 
 ## Use Cases
 ---------------------------------------------------------------------------------------------------------------
 1. User Registration
