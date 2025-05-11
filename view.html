@@ -1,0 +1,26 @@
+
+<h2>Average Rating: {{ avg_rating }}</h2>
+
+{% if current_user.is_authenticated %}
+    <form method="post">
+        {{ rating_form.hidden_tag() }}
+        {{ rating_form.value.label }} {{ rating_form.value(size=3) }}
+        {{ rating_form.submit() }}
+    </form>
+{% endif %}
+
+<h2>Comments</h2>
+{% for comment in comments %}
+    <p><strong>User {{ comment.user_id }}:</strong> {{ comment.text }}</p>
+{% else %}
+    <p>No comments yet.</p>
+{% endfor %}
+
+{% if current_user.is_authenticated %}
+    <form method="post">
+        {{ comment_form.hidden_tag() }}
+        {{ comment_form.text.label }}<br>
+        {{ comment_form.text(rows=3, cols=40) }}<br>
+        {{ comment_form.submit() }}
+    </form>
+{% endif %}
