@@ -1,0 +1,17 @@
+# virtual environment
+venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# local SQLite DB
+*.sqlite3
+*.db
+!instance/recipes.db
+
+
+# editor / OS files
+.vscode/
+*.env
+.DS_Store
