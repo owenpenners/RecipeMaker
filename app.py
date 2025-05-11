@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from forms import LoginForm, RegistrationForm
+from forms import LoginForm, RegistrationForm, ProfileForm, RecipeForm
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -15,12 +15,32 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+
+favorites = db.Table('favorites',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'),   primary_key=True),
+    db.Column('recipe_id', db.Integer, db.ForeignKey('recipe.id'), primary_key=True)
+)
+
+recipe_tags = db.Table('recipe_tags',
+    db.Column('recipe_id', db.Integer, db.ForeignKey('recipe.id'), primary_key=True),
+    db.Column('tag_id',    db.Integer, db.ForeignKey('tag.id'),    primary_key=True)
+)
+
+# Tags for recipes model
+class Tag(db.Model):
+    id   = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+
 # User Model
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(128), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
+    recipes = db.relationship('Recipe', backref='author', lazy='dynamic')
+    favorites = db.relationship('Recipe', secondary=favorites, backref=db.backref('saved_by', lazy='dynamic'), lazy = 'dynamic')
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -33,6 +53,11 @@ class Recipe(db.Model):
     ingredients = db.Column(db.Text, nullable=False)
     instructions = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    tags = db.relationship('Tag', secondary=recipe_tags, backref=db.backref('recipes', lazy='dynamic'), lazy='dynamic')
+
+# makes database
+# with app.app_context():
+ #   db.create_all()
 
 # Rating and Comment models
 class Rating(db.Model):
@@ -91,27 +116,51 @@ def view_recipe(id):
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
 def create_recipe():
-    if request.method == 'POST':
-        title = request.form['title']
-        ingredients = request.form['ingredients']
-        instructions = request.form['instructions']
-        user_id = current_user.id  #  user_id
-        new_recipe = Recipe(title=title, ingredients=ingredients, instructions=instructions, user_id=user_id)
-        db.session.add(new_recipe)
+    form = RecipeForm()
+    if form.validate_on_submit():
+        r = Recipe(
+            title        = form.title.data,
+            ingredients  = form.ingredients.data,
+            instructions = form.instructions.data,
+            author       = current_user
+        )
+        # attach tags
+        names = {t.strip().lower() for t in form.tags.data.split(',') if t.strip()}
+        for name in names:
+            tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
+            r.tags.append(tag)
+
+        db.session.add(r)
         db.session.commit()
+        flash('Recipe created!')
         return redirect(url_for('index'))
-    return render_template('create.html')
+
+    return render_template('create.html', form=form)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_recipe(id):
     recipe = Recipe.query.get_or_404(id)
-    if request.method == 'POST':
-        recipe.ingredients = request.form['ingredients']
-        recipe.instructions = request.form['instructions']
+    form   = RecipeForm(obj=recipe)
+    if form.validate_on_submit():
+        recipe.title        = form.title.data
+        recipe.ingredients  = form.ingredients.data
+        recipe.instructions = form.instructions.data
+
+        # attach tags
+        recipe.tags = []
+        names = {t.strip().lower() for t in form.tags.data.split(',') if t.strip()}
+        for name in names:
+            tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
+            recipe.tags.append(tag)
+
         db.session.commit()
+        flash('Recipe updated!')
         return redirect(url_for('index'))
-    return render_template('edit.html', recipe=recipe)
+
+    # populate tags
+    form.tags.data = ', '.join(t.name for t in recipe.tags)
+    return render_template('edit.html', form=form, recipe=recipe)
 
 @app.route('/delete/<int:id>')
 @login_required
@@ -161,6 +210,70 @@ def register():
         flash('Registration successful! Please log in.')
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
+
+# view profile
+@app.route('/profile')
+@login_required
+def profile():
+    # shows user, recipes, & favorites maybe
+    return render_template('profile.html', user=current_user, recipes=current_user.recipes,favorites=current_user.favorites.all())
+
+# edit profile, edit's username email and pass
+@app.route('/profile/edit', methods=['GET','POST'])
+@login_required
+def edit_profile():
+    form = ProfileForm(obj=current_user)
+    if form.validate_on_submit():
+        current_user.username = form.username.data
+        current_user.email    = form.email.data
+        if form.password.data:
+            current_user.password = generate_password_hash(form.password.data)
+        db.session.commit()
+        flash('Profile updated.')
+        return redirect(url_for('profile'))
+    return render_template('edit_profile.html', form=form)
+
+# searches for recipes
+@app.route('/search', methods=['GET'])
+@login_required
+def search_recipes():
+    q       = request.args.get('q', '').strip()
+    tag_name = request.args.get('tag', '').strip().lower()
+
+    # shows all recipes
+    base = Recipe.query
+
+    # if search term is typed
+    if q:
+        base = base.filter(Recipe.title.ilike(f'%{q}%'))
+
+    # clicked tag filter
+    if tag_name:
+        tag = Tag.query.filter_by(name=tag_name).first()
+        if tag:
+            # only recipes having that tag
+            base = base.join(Recipe.tags).filter(Tag.id == tag.id)
+        else:
+            base = base.filter(False)  # no such tag → empty
+
+    results  = base.all()
+    all_tags = Tag.query.order_by(Tag.name).all()
+
+    return render_template('search.html', results=results, q=q, all_tags=all_tags, current_tag=tag_name)
+
+# save to fave
+@app.route('/favorite/<int:id>', methods=['POST'])
+@login_required
+def favorite(id):
+    recipe = Recipe.query.get_or_404(id)
+    if not current_user.favorites.filter_by(id=recipe.id).first():
+        current_user.favorites.append(recipe)
+        db.session.commit()
+        flash('Recipe Saved!')
+    else:
+        flash('Already in favorites.')
+    return redirect(request.referrer or url_for('view_recipe', id=id))
+
 
 if __name__ == '__main__':
     with app.app_context():

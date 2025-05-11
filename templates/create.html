@@ -1,13 +1,28 @@
-<!DOCTYPE html>
-<html>
-<head><title>Create Recipe</title></head>
-<body>
-    <h1>Create a New Recipe</h1>
-    <form method="post">
-        Title: <input type="text" name="title"><br>
-        Ingredients: <textarea name="ingredients"></textarea><br>
-        Instructions: <textarea name="instructions"></textarea><br>
-        <button type="submit">Save</button>
-    </form>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block content %}
+  <h1>New Recipe</h1>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div>
+      {{ form.title.label }}<br>
+      {{ form.title() }}
+    </div>
+    <div>
+      {{ form.ingredients.label }}<br>
+      {{ form.ingredients(rows=4) }}
+    </div>
+    <div>
+      {{ form.instructions.label }}<br>
+      {{ form.instructions(rows=4) }}
+    </div>
+    <div>
+      {{ form.tags.label }}<br>
+      {{ form.tags(class="") }}
+      <small>Comma-separate (e.g. vegan, dessert)</small>
+    </div>
+    <div>
+      {{ form.submit() }}
+    </div>
+  </form>
+{% endblock %}

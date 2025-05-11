@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}RecipeMaker{% endblock %}</title>
+</head>
+<body>
+  <!-- NAVIGATION BAR -->
+  <nav style="margin-bottom: 1em;">
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('index') }}">Home</a> |
+      <a href="{{ url_for('create_recipe') }}">New Recipe</a> |
+      <a href="{{ url_for('search_recipes') }}">Search Recipes</a> |
+      <a href="{{ url_for('profile') }}">View Profile</a> |
+      <a href="{{ url_for('edit_profile') }}">Edit Profile</a> |
+      <a href="{{ url_for('logout') }}">Log Out</a>
+    {% else %}
+      <a href="{{ url_for('login') }}">Log In</a> |
+      <a href="{{ url_for('register') }}">Register</a>
+    {% endif %}
+  </nav>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

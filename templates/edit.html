@@ -1,12 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head><title>Edit Recipe</title></head>
-<body>
-    <h1>Edit Recipe: {{ recipe.title }}</h1>
-    <form method="post">
-        Ingredients: <textarea name="ingredients">{{ recipe.ingredients }}</textarea><br>
-        Instructions: <textarea name="instructions">{{ recipe.instructions }}</textarea><br>
-        <button type="submit">Update</button>
-    </form>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block content %}
+  <h1>Edit “{{ recipe.title }}”</h1>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div>
+      {{ form.ingredients.label }}<br>
+      {{ form.ingredients(rows=4) }}
+    </div>
+    <div>
+      {{ form.instructions.label }}<br>
+      {{ form.instructions(rows=4) }}
+    </div>
+    <div>
+      {{ form.tags.label }}<br>
+      {{ form.tags(class="") }}
+      <small>Comma-separate (e.g. vegan, dessert)</small>
+    </div>
+    <div>
+      {{ form.submit(label="Update") }}
+    </div>
+  </form>
+{% endblock %}
