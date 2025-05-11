@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h1>Search Recipes</h1>
+
+  <form method="GET" action="{{ url_for('search_recipes') }}">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by title…">
+    <button type="submit">Go</button>
+  </form>
+
+  <nav style="margin: 1em 0;">
+    <strong>Filter by tag:</strong>
+    <a href="{{ url_for('search_recipes') }}"
+       {% if not current_tag %}class="active"{% endif %}>All</a>
+    {% for tag in all_tags %}
+      |
+      <a href="{{ url_for('search_recipes', tag=tag.name) }}"
+         {% if tag.name == current_tag %}class="active"{% endif %}>
+        {{ tag.name }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <ul>
+    {% for recipe in results %}
+      <li>
+        <a href="{{ url_for('view_recipe', id=recipe.id) }}">{{ recipe.title }}</a>
+        {% if recipe.tags %}
+          <small>
+            [{% for t in recipe.tags %}
+               {{ t.name }}{% if not loop.last %}, {% endif %}
+             {% endfor %}]
+          </small>
+        {% endif %}
+      </li>
+    {% else %}
+      <p>No recipes found.</p>
+    {% endfor %}
+  </ul>
+{% endblock %}
