@@ -59,6 +59,20 @@ class Recipe(db.Model):
 # with app.app_context():
  #   db.create_all()
 
+# Rating and Comment models
+class Rating(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.Integer, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+
 @app.route('/')
 @login_required
 def index():
@@ -66,10 +80,38 @@ def index():
     recipes = Recipe.query.filter_by(user_id=current_user.id).all()
     return render_template('index.html', recipes=recipes)
 
-@app.route('/recipe/<int:id>')
+
+
+@app.route('/recipe/<int:id>', methods=['GET', 'POST'])
 def view_recipe(id):
+    from forms import RatingForm, CommentForm
     recipe = Recipe.query.get_or_404(id)
-    return render_template('view.html', recipe=recipe)
+    rating_form = RatingForm()
+    comment_form = CommentForm()
+
+    if rating_form.validate_on_submit() and 'value' in request.form and current_user.is_authenticated:
+        existing = Rating.query.filter_by(user_id=current_user.id, recipe_id=id).first()
+        if existing:
+            existing.value = rating_form.value.data
+        else:
+            db.session.add(Rating(value=rating_form.value.data, user_id=current_user.id, recipe_id=id))
+        db.session.commit()
+        flash("Rating submitted.")
+        return redirect(url_for('view_recipe', id=id))
+
+    if comment_form.validate_on_submit() and 'text' in request.form and current_user.is_authenticated:
+        db.session.add(Comment(text=comment_form.text.data, user_id=current_user.id, recipe_id=id))
+        db.session.commit()
+        flash("Comment added.")
+        return redirect(url_for('view_recipe', id=id))
+
+    ratings = Rating.query.filter_by(recipe_id=id).all()
+    avg_rating = round(sum(r.value for r in ratings) / len(ratings), 1) if ratings else "No ratings yet"
+    comments = Comment.query.filter_by(recipe_id=id).all()
+
+    return render_template('view.html', recipe=recipe, rating_form=rating_form,
+                           comment_form=comment_form, avg_rating=avg_rating, comments=comments)
+
 
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
