@@ -40,6 +40,21 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(128), nullable=False)
     recipes = db.relationship('Recipe', backref='author', lazy='dynamic')
     favorites = db.relationship('Recipe', secondary=favorites, backref=db.backref('saved_by', lazy='dynamic'), lazy = 'dynamic')
+    ratings_recieved = db.relationship('Rating', backref='profile', lazy=True)
+    
+    @property
+    def average_rating(self):
+        ratings = db.session.query(Rating.value).join(Recipe).filter(Recipe.user_id == self.id).all()
+        if not ratings:
+            return None
+        total = 0
+        rating_values = []
+        for rating in ratings:
+            rating_values.append(rating[0])
+
+        total = sum(rating_values)
+        return round(total / len(rating_values), 2)
+
 
 
 @login_manager.user_loader
@@ -71,6 +86,15 @@ class Comment(db.Model):
     text = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+# MealPlan Model
+class MealPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+    day_of_week = db.Column(db.String(10), nullable=False)
+    recipe = db.relationship('Recipe', backref='meal_plans', lazy=True)
+
 
 
 @app.route('/')
@@ -213,7 +237,9 @@ def register():
 @login_required
 def profile():
     # shows user, recipes, & favorites maybe
-    return render_template('profile.html', user=current_user, recipes=current_user.recipes,favorites=current_user.favorites.all())
+    print([r.id for r in Recipe.query.all()])
+    meal_plan = MealPlan.query.filter_by(user_id=current_user.id).all()
+    return render_template('profile.html', user=current_user, recipes=current_user.recipes,favorites=current_user.favorites.all(), average_rating=current_user.average_rating, meal_plan=meal_plan)
 
 # edit profile, edit's username email and pass
 @app.route('/profile/edit', methods=['GET','POST'])
@@ -275,7 +301,27 @@ def favorite(id):
     return redirect(request.referrer or url_for('view_recipe', id=id))
 
 
+# Add to meal plan function
+@app.route('/plan/<int:recipe_id>/<day>')
+@login_required
+def add_to_meal_plan(recipe_id, day):
+    meal_plan_item = MealPlan(user_id=current_user.id, recipe_id=recipe_id, day_of_week=day.capitalize())
+    db.session.add(meal_plan_item)
+    db.session.commit()
+    print(meal_plan_item)
+    return redirect(url_for('profile'))
+
+#Clear meal plan
+@app.route('/clear_meal_plan')
+@login_required
+def clear_meal_plan():
+    MealPlan.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    flash("Meal Plan has been cleared")
+    return redirect(url_for('profile'))
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
