@@ -199,12 +199,9 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         # hash pass hopefully
-        hashed = generate_password_hash(form.password.data)
-        new_user = User(
-            username=form.username.data,
-            email=form.email.data,
-            password=hashed
-        )
+        # hashed = generate_password_hash(form.password.data)
+        hashed = generate_password_hash( form.password.data, method='pbkdf2:sha256' )
+        new_user = User( username=form.username.data, email=form.email.data, password=hashed )
         db.session.add(new_user)
         db.session.commit()
         flash('Registration successful! Please log in.')
@@ -227,7 +224,10 @@ def edit_profile():
         current_user.username = form.username.data
         current_user.email    = form.email.data
         if form.password.data:
-            current_user.password = generate_password_hash(form.password.data)
+           current_user.password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+           
+
+
         db.session.commit()
         flash('Profile updated.')
         return redirect(url_for('profile'))
