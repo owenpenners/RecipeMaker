@@ -18,7 +18,7 @@
 2. Enter URL given by the running code followed by /<page name> to navigate to different pages.
    - Examples:
      - "127.0.01.1:5000/login"
-     - "127.0.01.1:5000/recipes"
+     - "127.0.01.1:5000/recipe/1"
      - "127.0.01.1:5000/register"
      - "127.0.01.1:5000/profile"
      - "127.0.01.1:5000/search"
