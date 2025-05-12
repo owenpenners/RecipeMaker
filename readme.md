@@ -14,6 +14,9 @@
 
 
 # Executing Code
+1. Run python3 -m venv venv to create virtual environment
+2. Run source venv/bin/activate to activate virtual environment
+3. Install dependencies via pip3 install -r requirements.txt
 1. Execute command python3 app.py
 2. Enter URL given by the running code followed by /<page name> to navigate to different pages.
    - Examples:
