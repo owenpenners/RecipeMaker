@@ -33,11 +33,12 @@ The homepage or main recipe list will display all recipes stored in the database
 15.Filter Recipes
 Users can filter recipes by predefined tags such as 'vegan', 'dessert', or 'gluten-free'.
 
-## Non-functional Requirements
+## Our own requirements
 ---------------------------------------------------------------------------------------------------------------
-1. Pages load within 1 second
-2. The password database is secured by any type of encryption
-3. 
+1. Meal Plan
+2. Clear Meal Plan
+3. Profile Average Rating
+
 ## Use Cases
 ---------------------------------------------------------------------------------------------------------------
 1. User Registration
