@@ -40,6 +40,21 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(128), nullable=False)
     recipes = db.relationship('Recipe', backref='author', lazy='dynamic')
     favorites = db.relationship('Recipe', secondary=favorites, backref=db.backref('saved_by', lazy='dynamic'), lazy = 'dynamic')
+    ratings_recieved = db.relationship('Rating', backref='profile', lazy=True)
+    
+    @property
+    def average_rating(self):
+        ratings = db.session.query(Rating.value).join(Recipe).filter(Recipe.user_id == self.id).all()
+        if not ratings:
+            return None
+        total = 0
+        rating_values = []
+        for rating in ratings:
+            rating_values.append(rating[0])
+
+        total = sum(rating_values)
+        return round(total / len(rating_values), 2)
+
 
 
 @login_manager.user_loader
@@ -59,6 +74,29 @@ class Recipe(db.Model):
 # with app.app_context():
  #   db.create_all()
 
+# Rating and Comment models
+class Rating(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.Integer, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+# MealPlan Model
+class MealPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+    day_of_week = db.Column(db.String(10), nullable=False)
+    recipe = db.relationship('Recipe', backref='meal_plans', lazy=True)
+
+
+
 @app.route('/')
 @login_required
 def index():
@@ -66,10 +104,38 @@ def index():
     recipes = Recipe.query.filter_by(user_id=current_user.id).all()
     return render_template('index.html', recipes=recipes)
 
-@app.route('/recipe/<int:id>')
+
+
+@app.route('/recipe/<int:id>', methods=['GET', 'POST'])
 def view_recipe(id):
+    from forms import RatingForm, CommentForm
     recipe = Recipe.query.get_or_404(id)
-    return render_template('view.html', recipe=recipe)
+    rating_form = RatingForm()
+    comment_form = CommentForm()
+
+    if rating_form.validate_on_submit() and 'value' in request.form and current_user.is_authenticated:
+        existing = Rating.query.filter_by(user_id=current_user.id, recipe_id=id).first()
+        if existing:
+            existing.value = rating_form.value.data
+        else:
+            db.session.add(Rating(value=rating_form.value.data, user_id=current_user.id, recipe_id=id))
+        db.session.commit()
+        flash("Rating submitted.")
+        return redirect(url_for('view_recipe', id=id))
+
+    if comment_form.validate_on_submit() and 'text' in request.form and current_user.is_authenticated:
+        db.session.add(Comment(text=comment_form.text.data, user_id=current_user.id, recipe_id=id))
+        db.session.commit()
+        flash("Comment added.")
+        return redirect(url_for('view_recipe', id=id))
+
+    ratings = Rating.query.filter_by(recipe_id=id).all()
+    avg_rating = round(sum(r.value for r in ratings) / len(ratings), 1) if ratings else "No ratings yet"
+    comments = Comment.query.filter_by(recipe_id=id).all()
+
+    return render_template('view.html', recipe=recipe, rating_form=rating_form,
+                           comment_form=comment_form, avg_rating=avg_rating, comments=comments)
+
 
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -157,12 +223,9 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         # hash pass hopefully
-        hashed = generate_password_hash(form.password.data)
-        new_user = User(
-            username=form.username.data,
-            email=form.email.data,
-            password=hashed
-        )
+        # hashed = generate_password_hash(form.password.data)
+        hashed = generate_password_hash( form.password.data, method='pbkdf2:sha256' )
+        new_user = User( username=form.username.data, email=form.email.data, password=hashed )
         db.session.add(new_user)
         db.session.commit()
         flash('Registration successful! Please log in.')
@@ -174,7 +237,9 @@ def register():
 @login_required
 def profile():
     # shows user, recipes, & favorites maybe
-    return render_template('profile.html', user=current_user, recipes=current_user.recipes,favorites=current_user.favorites.all())
+    print([r.id for r in Recipe.query.all()])
+    meal_plan = MealPlan.query.filter_by(user_id=current_user.id).all()
+    return render_template('profile.html', user=current_user, recipes=current_user.recipes,favorites=current_user.favorites.all(), average_rating=current_user.average_rating, meal_plan=meal_plan)
 
 # edit profile, edit's username email and pass
 @app.route('/profile/edit', methods=['GET','POST'])
@@ -185,7 +250,10 @@ def edit_profile():
         current_user.username = form.username.data
         current_user.email    = form.email.data
         if form.password.data:
-            current_user.password = generate_password_hash(form.password.data)
+           current_user.password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+           
+
+
         db.session.commit()
         flash('Profile updated.')
         return redirect(url_for('profile'))
@@ -233,7 +301,27 @@ def favorite(id):
     return redirect(request.referrer or url_for('view_recipe', id=id))
 
 
+# Add to meal plan function
+@app.route('/plan/<int:recipe_id>/<day>')
+@login_required
+def add_to_meal_plan(recipe_id, day):
+    meal_plan_item = MealPlan(user_id=current_user.id, recipe_id=recipe_id, day_of_week=day.capitalize())
+    db.session.add(meal_plan_item)
+    db.session.commit()
+    print(meal_plan_item)
+    return redirect(url_for('profile'))
+
+#Clear meal plan
+@app.route('/clear_meal_plan')
+@login_required
+def clear_meal_plan():
+    MealPlan.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    flash("Meal Plan has been cleared")
+    return redirect(url_for('profile'))
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+

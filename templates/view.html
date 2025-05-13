@@ -1,15 +1,46 @@
 {% extends 'base.html' %}
 {% block title %}{{ recipe.title }}{% endblock %}
+
 {% block content %}
   <h1>{{ recipe.title }}</h1>
   <p><strong>Ingredients:</strong><br>{{ recipe.ingredients }}</p>
   <p><strong>Instructions:</strong><br>{{ recipe.instructions }}</p>
+
   <p>
-    <a href="{{ url_for('edit_recipe', id=recipe.id) }}">Edit</a> |
-    <a href="{{ url_for('delete_recipe', id=recipe.id) }}">Delete</a> |
+    {% if current_user.is_authenticated and current_user.id == recipe.user_id %}
+      <a href="{{ url_for('edit_recipe', id=recipe.id) }}">Edit</a> |
+      <a href="{{ url_for('delete_recipe', id=recipe.id) }}">Delete</a> |
+    {% endif %}
     <form action="{{ url_for('favorite', id=recipe.id) }}" method="post" style="display:inline">
       <button type="submit">Save to Favorites</button>
     </form> |
     <a href="{{ url_for('index') }}">Back</a>
   </p>
+
+  <h2>Average Rating: {{ avg_rating }}</h2>
+  {% if current_user.is_authenticated %}
+    <form method="post">
+      {{ rating_form.hidden_tag() }}
+      {{ rating_form.value.label }}<br>
+      {{ rating_form.value(size=3) }}<br>
+      {{ rating_form.submit() }}
+    </form>
+  {% endif %}
+
+  <h2>Comments</h2>
+  {% for comment in comments %}
+    <p><strong>User {{ comment.user_id }}:</strong> {{ comment.text }}</p>
+  {% else %}
+    <p>No comments yet.</p>
+  {% endfor %}
+
+  {% if current_user.is_authenticated %}
+    <form method="post">
+      {{ comment_form.hidden_tag() }}
+      {{ comment_form.text.label }}<br>
+      {{ comment_form.text(rows=3, cols=40) }}<br>
+      {{ comment_form.submit() }}
+    </form>
+  {% endif %}
 {% endblock %}
+

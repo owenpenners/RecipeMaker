@@ -4,7 +4,8 @@
   <h1>{{ user.username }}’s Profile</h1>
   <p>Email: {{ user.email }}</p>
   <p><a href="{{ url_for('edit_profile') }}">Edit Profile</a></p>
-
+  <h2> Average Rating </h2>
+  <p> Rating: {{ average_rating or "No ratings yet" }} </p>
   <h2>Your Recipes</h2>
   <ul>
     {% for r in recipes %}
@@ -21,5 +22,13 @@
     {% else %}
       <li>You haven’t saved any recipes yet.</li>
     {% endfor %}
+  </ul>
+  <h2> Your Meal Plan </h2>
+  <ul>
+	  {% for plan in meal_plan %}
+	  <li>{{ plan.day_of_week }}: {{ plan.recipe.title }} </li>
+	  {% else %}
+	  <li> No meals planned yet. </li>
+	  {% endfor %}
   </ul>
 {% endblock %}
