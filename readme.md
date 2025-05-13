@@ -27,3 +27,6 @@
      - "127.0.01.1:5000/search"
      - "127.0.01.1:5000/plan/<integer>/<day>"
      - "127.0.01.1:5000/clear_meal_plan"
+
+# Presentation Video
+- https://drive.google.com/file/d/1Jog8e4bQAB6nKzM1XruJrnHol-EA_dY5/view?usp=sharing
